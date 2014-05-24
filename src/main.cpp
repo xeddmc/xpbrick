@@ -39,7 +39,7 @@ libzerocoin::Params* ZCParams;
 CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // "standard" scrypt target limit for proof of work, results with 0,000244140625 proof-of-work difficulty
 CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
 CBigNum bnProofOfStakeLimitAfterFork(~uint256(0) >> 12); // allow 256 times lower stake limit after fork
-unsigned int forkNum = 8212;
+int forkNum = 8209;
 CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 16);
 
 unsigned int nTargetSpacing = 1 * 60; // 60 seconds
@@ -997,11 +997,11 @@ int64_t GetProofOfWorkReward(int64_t nFees)
 
 const int DAILY_BLOCKCOUNT =  1440;
 // miner's coin stake reward based on coin age spent (coin-days)
-int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees)
+int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees, int blockheight)
 {
     int64_t nRewardCoinYear;
 
-    nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
+    nRewardCoinYear = (blockheight > forkNum) ? MAX_MINT_PROOF_OF_STAKE_FORKED:MAX_MINT_PROOF_OF_STAKE;
 
     int64_t nSubsidy = nCoinAge * nRewardCoinYear / 365 / COIN;
 
@@ -1066,7 +1066,7 @@ static unsigned int GetNextTargetRequired_(const CBlockIndex* pindexLast, bool f
        if (pindexLast->nHeight > forkNum)
             bnTargetLimit = bnProofOfStakeLimitAfterFork;
         else
-            bnTargetLimit = fProofOfStake;
+            bnTargetLimit = bnProofOfStakeLimit;
     } else {
        bnTargetLimit = bnProofOfWorkLimit;
     }
@@ -1608,7 +1608,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
         if (!vtx[1].GetCoinAge(txdb, nCoinAge))
             return error("ConnectBlock() : %s unable to get coin age for coinstake", vtx[1].GetHash().ToString().substr(0,10).c_str());
 
-        int64_t nCalculatedStakeReward = GetProofOfStakeReward(nCoinAge, nFees);
+        int64_t nCalculatedStakeReward = GetProofOfStakeReward(nCoinAge, nFees, pindex->nHeight);
 
         if (nStakeReward > nCalculatedStakeReward)
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%"PRId64" vs calculated=%"PRId64")", nStakeReward, nCalculatedStakeReward));
