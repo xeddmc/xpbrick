@@ -38,6 +38,8 @@ libzerocoin::Params* ZCParams;
 
 CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // "standard" scrypt target limit for proof of work, results with 0,000244140625 proof-of-work difficulty
 CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
+CBigNum bnProofOfStakeLimitAfterFork(~uint256(0) >> 12); // allow 256 times lower stake limit after fork
+unsigned int forkNum = 8212;
 CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 16);
 
 unsigned int nTargetSpacing = 1 * 60; // 60 seconds
@@ -1059,7 +1061,18 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
 
 static unsigned int GetNextTargetRequired_(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
-    CBigNum bnTargetLimit = fProofOfStake ? bnProofOfStakeLimit : bnProofOfWorkLimit;
+    CBigNum bnTargetLimit;
+    if (fProofOfStake) {
+       if (pindexLast->nHeight > forkNum)
+            bnTargetLimit = bnProofOfStakeLimitAfterFork;
+        else
+            bnTargetLimit = fProofOfStake;
+    } else {
+       bnTargetLimit = bnProofOfWorkLimit;
+    }
+ 
+     if (pindexLast == NULL)
+         return bnTargetLimit.GetCompact(); // genesis block
 
     if (pindexLast == NULL)
         return bnTargetLimit.GetCompact(); // genesis block
