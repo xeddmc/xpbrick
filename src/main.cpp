@@ -39,7 +39,11 @@ libzerocoin::Params* ZCParams;
 CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // "standard" scrypt target limit for proof of work, results with 0,000244140625 proof-of-work difficulty
 CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
 CBigNum bnProofOfStakeLimitAfterFork(~uint256(0) >> 12); // allow 256 times lower stake limit after fork
-int forkNum = 8209;
+const int forkNum = 8209;
+const int DAILY_BLOCKCOUNT =  1440;
+const int decStakeForkNum = DAILY_BLOCKCOUNT*30; // first period of halving starts from 30 days from the beginning, @43200, still 100% after this
+const int decStakePeriod = DAILY_BLOCKCOUNT*30;  // stake is halved every 30 days, first halving at decStakeForkNum + decStakePeriod
+
 CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 16);
 
 unsigned int nTargetSpacing = 1 * 60; // 60 seconds
@@ -995,13 +999,19 @@ int64_t GetProofOfWorkReward(int64_t nFees)
     return nSubsidy + nFees;
 }
 
-const int DAILY_BLOCKCOUNT =  1440;
 // miner's coin stake reward based on coin age spent (coin-days)
 int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees, int blockheight)
 {
     int64_t nRewardCoinYear;
-
-    nRewardCoinYear = (blockheight > forkNum) ? MAX_MINT_PROOF_OF_STAKE_FORKED:MAX_MINT_PROOF_OF_STAKE;
+    if (blockheight <= forkNum) {
+        nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
+    } else {
+        nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE_FORKED;
+    	if (blockheight > decStakeForkNum) {
+        	nRewardCoinYear >>= ((blockheight - decStakeForkNum) / decStakePeriod);
+        }
+	if (nRewardCoinYear < MAX_MINT_PROOF_OF_STAKE) nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
+    }
 
     int64_t nSubsidy = nCoinAge * nRewardCoinYear / 365 / COIN;
 
