@@ -1143,6 +1143,7 @@ static const char *strDNSSeed[][2] = {
     {"162.243.214.192", "162.243.214.192"},
     {"192.241.240.216", "192.241.240.216"},
     {"107.170.159.98", "107.170.159.98"},
+    {"buddylabsapps.com", "syncdnsseed.buddylabsapps.com"},
 	
 };
 
